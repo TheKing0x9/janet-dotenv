@@ -1,0 +1,11 @@
+(use ../janet-dotenv/init)
+(use spork/test)
+
+(start-suite "Quoting and interpolation")
+(os/setenv "USER" "alice")
+(def d (load-as-dict "SINGLE='a $USER'\nDOUBLE=\"a $USER\"\nUNQ=a$USER\nBACK=`a $USER`"))
+(assert (= (get d "SINGLE") "a $USER"))
+(assert (= (get d "DOUBLE") (string "a " (os/getenv "USER"))))
+(assert (= (get d "UNQ") (string "a" (os/getenv "USER"))))
+(assert (= (get d "BACK") (string "a " (os/getenv "USER"))))
+(end-suite)
