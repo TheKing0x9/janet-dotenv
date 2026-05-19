@@ -4,5 +4,5 @@
 (start-suite "Source directive")
 (def d (load-as-dict "test/dotenvs/main.env" true))
 (assert (= (get d "DEF") "default"))
-(assert (= (get d "FOO") "bar"))
+(assert (= (get d "FOO") "bar:baz:bak"))
 (end-suite)

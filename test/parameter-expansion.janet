@@ -11,4 +11,11 @@
 (assert (= (get d "A4") "W"))
 (assert (= (get d "A5") "D"))
 (assert (= (get d "A6") "val"))
+
+(os/setenv "T3" nil)
+(def d2 (load-as-dict "B1=${T3-default}\nB2=${T3:-default}\nB3=${T3+alt}\nB4=${T3:+alt}\n"))
+(assert (= (get d2 "B1") "default"))
+(assert (= (get d2 "B2") "default"))
+(assert (= (get d2 "B3") ""))
+(assert (= (get d2 "B4") ""))
 (end-suite)
