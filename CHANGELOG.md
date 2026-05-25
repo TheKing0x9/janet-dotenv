@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 Format for entries is <version-string> - release date.
 
+## 1.0.0 - 2026-05-25
+- Added command substitution.
+- Cache process environment locally before subsituting variables.
+
 ## 1.0.0-rc2 - 2026-05-19
 - Fixed a bug where variable expansion did not work correctly when the variable was re-defined.
 - Add more tests.

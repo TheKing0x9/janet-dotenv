@@ -1,31 +1,15 @@
-(defn- substitute-variable
-  [env var &opt not-empty op value]
-  (def not-empty? (= not-empty ":"))
-  (def env-value (or (get env var) (os/getenv var)))
-  (def is-var-set (not= env-value nil))
-  (case op
-    "-" (if is-var-set (if not-empty? (if (= env-value "") value env-value) env-value) value)
-    "+" (if is-var-set (if not-empty? (if (= env-value "") env-value value) value) "")
-    (or env-value "")))
-
 (defn- generate-variable-sub-array
     [var &opt not-empty op value]
-    [var not-empty op value])
+    [:variable [var not-empty op value]])
 
-# Getting a nil coerced from await to error whenever waiting for the process to finish
-# TODO: discuss and implement
-(defn- substitute-command
-  [command]
-  # (def out-file (file/temp))
-  # (def pid (os/execute ["pwd"] :p {:out out-file}))
-  # (file/seek out-file :set 0)
-  # (def command-output (file/read out-file :all))
-  command)
+(defn- generate-command-sub-array
+    [command]
+    [:command [command]])
 
 (def- interp-peg (peg/compile
                     ~{:key (<- (* (+ :a "_") (any (+ :w "_"))))
                      :variable (/ (* "$" (+ :key (* "{" :key (? (* (<- (? ":")) (<- (+ "+" "-")) (<- (some (if-not "}" 1))))) "}"))) ,generate-variable-sub-array)
-                     :command (/ (* "$" "(" (<- (any (if-not ")" 1))) ")") ,substitute-command)
+                     :command (/ (* "$" "(" (<- (any (if-not ")" 1))) ")") ,generate-command-sub-array)
                      :statement (some (* (<- (any (if-not "$" 1))) (? (+ :variable :command))))
                      :main :statement}))
 
@@ -79,6 +63,25 @@
                      # (* :spaces? (+ :set-command :source-command :comment :spaces? ) (+ :newline -1))
                      :main (any :line)}))
 
+(defn- substitute-variable
+  [env var &opt not-empty op value]
+  (def not-empty? (= not-empty ":"))
+  (def env-value (or (get env var) (os/getenv var)))
+  (def is-var-set (not= env-value nil))
+  (case op
+    "-" (if is-var-set (if not-empty? (if (= env-value "") value env-value) env-value) value)
+    "+" (if is-var-set (if not-empty? (if (= env-value "") env-value value) value) "")
+    (or env-value "")))
+
+(defn- substitute-command
+  [env command]
+  (def out-file (file/temp))
+  (put env :out out-file)
+  (def pid (os/execute (string/split " " command) :pe env))
+  (put env :out nil)
+  (file/seek out-file :set 0)
+  (file/read out-file :all))
+
 (defn- process-interpolation
   [value env]
   (case (type value)
@@ -87,18 +90,26 @@
     :array (do
         (def result value)
         (eachp [idx val] result
-            (if (= (type val) :tuple) (set (result idx) (substitute-variable env ;val))))
+            (if (= (type val) :tuple)
+                (do
+                    (def [val-type val-value] val)
+                    (case val-type
+                        :command    (set (result idx) (substitute-command env ;val-value))
+                        :variable   (set (result idx) (substitute-variable env ;val-value))))))
         (string/join result))))
 
-(defn- interpolate-string
+(defn interpolate-string
+  ``Interpolate a string to expand the environment variables in it.
+    @value: string to interpolate
+    @env: a table of environment variables. Values are first looked up from this table, and then from the environment (optional)``
   [value &opt env]
-  (default env @{})
+  (default env (os/environ))
   (process-interpolation (peg/match interp-peg value) env))
 
 (defn- load-str-as-dict
   [str]
   (def capture (peg/match dotenv-peg str))
-  (def env @{})
+  (def env (os/environ))
   (each element capture
     (def value (process-interpolation (element :value) env))
     (case (element :type)

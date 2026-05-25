@@ -12,6 +12,7 @@ This library parses .env-style files into a Janet dictionary and can optionally 
 - Escape sequences for common character escapes and hex/unicode escapes
 - Variable interpolation and parameter expansion.
 - Recognizes `export KEY=value` and `source filepath` directives (source includes another file)
+- Command substitution with `$(cmd)` directive. 
 
 ## Installation
 
@@ -95,10 +96,22 @@ The following syntax is supported in .env
 The following interpolation styles are supported. 
 
 - `$HOME` or `${HOME}` : Return value of environment variable `HOME`
-- ${USER:-default}     : use `default` if `USER` is unset or set and not empty.
-- ${USER-default}      : use `default` if `USER` is unset.
-- ${FLAG:+alt}         : substitute `alt` when `FLAG` is set and not-empty.
-- ${FLAG:+alt}         : substitute `alt` when `FLAG` is set.
+- `${USER:-default}`     : use `default` if `USER` is unset or set and not empty.
+- `${USER-default}`      : use `default` if `USER` is unset.
+- `${FLAG:+alt}`         : substitute `alt` when `FLAG` is set and not-empty.
+- `${FLAG:+alt}`         : substitute `alt` when `FLAG` is set.
+
+### Command Interpolation
+
+You can interpolate commands with `$(command)`, which executes the command and substitutes its stdout into the value. This works in unquoted, double-quoted, and backtick values.
+
+```bash
+FOO=$(printf %s bar)
+PATH="$(pwd):$PATH"
+source $(printf %s ./defaults.env)
+```
+
+Commands are executed without a shell; the string is split on spaces, so shell operators, quoting, and redirection are not supported. Output is inserted as-is, including any trailing newlines.
 
 ### Quoting behavior
 
@@ -179,6 +192,5 @@ Please open an issue describing the bug or improvement, including steps to repro
 
 At the moment, the following issues are known to exist
 
-- Command substitution with `$(command)` does not currently execute the command; This is a known limitation and will be addressed in future releases.
 - Handling of escape sequences needs to be tested more thoroughly.
 - Error handling is a bit basic and could be improved to provide more informative messages.
